@@ -8,13 +8,23 @@ import yaml
 from mlflow.tracking import MlflowClient
 
 
-V2_MODEL_PATH = Path("models/retrained_model_v2.pkl")
-V2_PREPROCESSOR_PATH = Path("models/retrained_preprocessor_v2.pkl")
-RETRAINING_REPORT_PATH = Path("outputs/retraining/retraining_report.json")
-COMPARISON_REPORT_PATH = Path("outputs/retraining/model_comparison_report.json")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+V2_MODEL_PATH = PROJECT_ROOT / "models" / "retrained_model_v2.pkl"
+V2_PREPROCESSOR_PATH = (
+    PROJECT_ROOT / "models" / "retrained_preprocessor_v2.pkl"
+)
+RETRAINING_REPORT_PATH = (
+    PROJECT_ROOT / "outputs" / "retraining" / "retraining_report.json"
+)
+COMPARISON_REPORT_PATH = (
+    PROJECT_ROOT / "outputs" / "retraining" / "model_comparison_report.json"
+)
 
-REGISTRY_REPORT_PATH = Path(
-    "outputs/retraining/mlflow_registry_update_report.json"
+REGISTRY_REPORT_PATH = (
+    PROJECT_ROOT
+    / "outputs"
+    / "retraining"
+    / "mlflow_registry_update_report.json"
 )
 
 
@@ -24,8 +34,11 @@ def configure_mlflow(config):
         or config["mlflow"].get("tracking_uri")
     )
 
-    if tracking_uri:
-        mlflow.set_tracking_uri(tracking_uri)
+    if not tracking_uri:
+        tracking_uri = f"sqlite:///{(PROJECT_ROOT / 'mlflow.db').as_posix()}"
+
+    mlflow.set_tracking_uri(tracking_uri)
+    print(f"[INFO] MLflow tracking URI: {mlflow.get_tracking_uri()}")
 
 
 def load_reports():
@@ -332,12 +345,12 @@ def register_v2(config, retraining_report, comparison_report):
     )
 
     report = {
-        "stage": "Lab 12.15 - MLflow Registry Update",
+        "workflow_stage": "Lab 12.15 - MLflow Registry Update",
         "model_name": model_name,
         "registered_version": int(v2_version.version),
         "registered_run_id": registry_run_id,
         "source_retraining_run_id": source_retraining_run_id,
-        "stage": "Staging",
+        "registry_stage": "Staging",
         "production_version_before": (
             int(production_version.version)
             if production_version
@@ -404,7 +417,7 @@ def main():
             f"Comparison report not found: {COMPARISON_REPORT_PATH}"
         )
 
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    with (PROJECT_ROOT / "config.yaml").open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     configure_mlflow(config)
@@ -428,7 +441,7 @@ def main():
         f"V2 registry version : {report['registered_version']}"
     )
     print(
-        f"V2 stage          : {report['stage']}"
+        f"V2 stage          : {report['registry_stage']}"
     )
     print(
         f"Production before : {report['production_version_before']}"

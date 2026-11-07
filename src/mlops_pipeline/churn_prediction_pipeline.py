@@ -3,7 +3,10 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 STAGES = [
     ("Data Loading", "src/mlops_pipeline/01_load_data.py"),
@@ -20,12 +23,12 @@ STAGES = [
 
 
 def load_data_load_report():
-    report_path = "artifacts/data_load_report.json"
+    report_path = PROJECT_ROOT / "artifacts" / "data_load_report.json"
 
     if not os.path.exists(report_path):
         raise FileNotFoundError(f"Data load report not found: {report_path}")
 
-    with open(report_path, "r", encoding="utf-8") as f:
+    with report_path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -41,7 +44,10 @@ def run_pipeline(force=False):
         print(f"RUNNING: {stage_name}")
         print("=" * 70)
 
-        result = subprocess.run([sys.executable, script_path])
+        result = subprocess.run(
+            [sys.executable, str(PROJECT_ROOT / script_path)],
+            cwd=PROJECT_ROOT,
+        )
         status = "PASSED" if result.returncode == 0 else "FAILED"
 
         run_log["stages"].append({"stage": stage_name, "status": status, "exit_code": result.returncode})
@@ -78,10 +84,10 @@ def run_pipeline(force=False):
     if all_passed:
         run_log["overall_status"] = "PASSED"
 
-    os.makedirs("logs", exist_ok=True)
-    log_path = "logs/churn_prediction_pipeline_run_log.json"
+    log_path = PROJECT_ROOT / "logs" / "churn_prediction_pipeline_run_log.json"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(log_path, "w", encoding="utf-8") as f:
+    with log_path.open("w", encoding="utf-8") as f:
         json.dump(run_log, f, indent=4)
 
     print("\n" + "=" * 70)

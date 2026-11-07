@@ -1,11 +1,18 @@
 import os
 import json
+from pathlib import Path
+
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score
 
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
 def run_deterministic_test():
     print("Running Reproducibility Validation...")
+    os.chdir(PROJECT_ROOT)
     
     # Load Data
     X_train = np.load('data/processed/X_train_final.npy')

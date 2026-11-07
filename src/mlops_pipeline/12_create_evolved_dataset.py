@@ -3,8 +3,9 @@ import numpy as np
 from pathlib import Path
 
 
-SOURCE_PATH = Path("data/processed/X_test_raw.csv")
-OUTPUT_PATH = Path("data/monitoring/drift/evolved_data.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SOURCE_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
+OUTPUT_PATH = PROJECT_ROOT / "data" / "monitoring" / "drift" / "evolved_data.csv"
 
 RANDOM_SEED = 42
 

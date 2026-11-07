@@ -1,16 +1,16 @@
 from pathlib import Path
 from datetime import datetime, timezone
-import hashlib
 import json
 import os
 import shutil
 
 import pandas as pd
 import yaml
-
+import hashlib
 from validation import validate_schema
 
-CONFIG_PATH = Path("config.yaml")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
 
 def load_config():
@@ -32,13 +32,13 @@ def load_lineage(lineage_path):
     if not lineage_path.exists():
         return []
 
-    try:
-        with lineage_path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
+    with lineage_path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
 
-        return data if isinstance(data, list) else []
-    except (json.JSONDecodeError, OSError):
-        return []
+    if not isinstance(data, list):
+        raise ValueError(f"Dataset lineage must be a JSON list: {lineage_path}")
+
+    return data
 
 
 def save_lineage(lineage_path, lineage):
@@ -197,6 +197,7 @@ def load_current_data(raw_path):
 
 
 def main():
+    os.chdir(PROJECT_ROOT)
     config = load_config()
 
     raw_path = Path(config["data"]["raw_path"])

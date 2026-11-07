@@ -1,11 +1,17 @@
 import numpy as np
 import pandas as pd
 import joblib
-from sklearn.model_selection import train_test_split
+import os
+from pathlib import Path
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 
 def run_evaluation():
     print("Starting Model Evaluation...")
+    os.chdir(PROJECT_ROOT)
     
     # 1. Load test data and the trained model
     X_test_final = np.load('data/processed/X_test_final.npy')
@@ -29,9 +35,7 @@ def run_evaluation():
     print("-------------------------------\n")
     
     # 4. Error Analysis Export
-    # We load the raw dataset just to get the original customer rows back
-    df = pd.read_csv('data/raw/churn.csv')
-    _, X_test_raw = train_test_split(df.drop('Churn', axis=1), test_size=0.2, random_state=42, stratify=df['Churn'])
+    X_test_raw = pd.read_csv('data/processed/X_test_raw.csv')
     
     errors_df = X_test_raw.copy()
     errors_df['Actual_Churn'] = y_test
@@ -40,6 +44,7 @@ def run_evaluation():
     false_negatives = errors_df[(errors_df['Actual_Churn'] == 1) & (errors_df['Predicted_Churn'] == 0)]
     false_positives = errors_df[(errors_df['Actual_Churn'] == 0) & (errors_df['Predicted_Churn'] == 1)]
     
+    os.makedirs('outputs', exist_ok=True)
     false_negatives.to_csv('outputs/false_negatives.csv', index=False)
     false_positives.to_csv('outputs/false_positives.csv', index=False)
     

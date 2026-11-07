@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -8,17 +7,25 @@ from pathlib import Path
 import pandas as pd
 
 
-DRIFT_SCRIPT = Path("src/mlops_pipeline/12_drift_analysis.py")
-DRIFT_REPORT = Path("outputs/drift/drift_analysis_report.csv")
-NEW_DATA_PATH = Path("data/raw/new_churn.csv")
-PIPELINE_SCRIPT = Path("src/mlops_pipeline/churn_prediction_pipeline.py")
-TRIGGER_REPORT = Path("outputs/monitoring/monitor_trigger_report.json")
-DATA_LOAD_REPORT = Path("artifacts/data_load_report.json")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DRIFT_SCRIPT = PROJECT_ROOT / "src" / "mlops_pipeline" / "12_drift_analysis.py"
+DRIFT_REPORT = PROJECT_ROOT / "outputs" / "drift" / "drift_analysis_report.csv"
+NEW_DATA_PATH = PROJECT_ROOT / "data" / "raw" / "new_churn.csv"
+PIPELINE_SCRIPT = (
+    PROJECT_ROOT / "src" / "mlops_pipeline" / "churn_prediction_pipeline.py"
+)
+TRIGGER_REPORT = (
+    PROJECT_ROOT / "outputs" / "monitoring" / "monitor_trigger_report.json"
+)
+DATA_LOAD_REPORT = PROJECT_ROOT / "artifacts" / "data_load_report.json"
 
 
 def run_drift_analysis():
     print("[INFO] Running drift analysis...")
-    result = subprocess.run([sys.executable, str(DRIFT_SCRIPT)])
+    result = subprocess.run(
+        [sys.executable, str(DRIFT_SCRIPT)],
+        cwd=PROJECT_ROOT,
+    )
     return result.returncode == 0
 
 
@@ -115,7 +122,10 @@ def run_monitor_trigger():
     print("[INFO] Drift detected and new dataset is available.")
     print("[INFO] Triggering existing MLOps pipeline...")
 
-    pipeline_result = subprocess.run([sys.executable, str(PIPELINE_SCRIPT)])
+    pipeline_result = subprocess.run(
+        [sys.executable, str(PIPELINE_SCRIPT)],
+        cwd=PROJECT_ROOT,
+    )
 
     data_load_status = get_data_load_status()
     new_data_ingested = data_load_status == "ingested"

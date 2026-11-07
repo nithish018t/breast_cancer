@@ -5,7 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-LOG_PATH = Path("logs/inference/inference_log.jsonl")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+LOG_PATH = PROJECT_ROOT / "logs" / "inference" / "inference_log.jsonl"
 _LOCK = threading.Lock()
 
 

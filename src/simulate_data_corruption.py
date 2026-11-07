@@ -1,5 +1,16 @@
+import os
+import sys
+from pathlib import Path
+
 import pandas as pd
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.validate_data import validate_schema
+
 
 def simulate_corrupted_data(df):
     """Simulates real-world data corruption scenarios across multiple columns."""
@@ -16,6 +27,7 @@ def simulate_corrupted_data(df):
     corrupted_df.loc[2, 'Churn'] = 'Maybe'
     
     # 4. Datatype mismatch (injecting string into float column)
+    corrupted_df['MonthlyCharges'] = corrupted_df['MonthlyCharges'].astype(object)
     corrupted_df.loc[3, 'MonthlyCharges'] = "One Hundred"
     
     # 5. Schema inconsistency (unexpected extra column)
@@ -27,6 +39,7 @@ def simulate_corrupted_data(df):
     return corrupted_df
 
 if __name__ == "__main__":
+    os.chdir(PROJECT_ROOT)
     data_path = 'data/raw/churn.csv'
     
     try:

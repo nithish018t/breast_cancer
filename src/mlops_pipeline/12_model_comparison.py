@@ -13,14 +13,21 @@ from api.model_loader import ModelLoader
 from api.preprocessing import clean_prediction_data
 
 
-TEST_FEATURES_PATH = Path("data/processed/X_test_raw.csv")
-TEST_LABELS_PATH = Path("data/processed/y_test.npy")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+TEST_FEATURES_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
+TEST_LABELS_PATH = PROJECT_ROOT / "data" / "processed" / "y_test.npy"
 
-V2_MODEL_PATH = Path("models/retrained_model_v2.pkl")
-V2_PREPROCESSOR_PATH = Path("models/retrained_preprocessor_v2.pkl")
+V2_MODEL_PATH = PROJECT_ROOT / "models" / "retrained_model_v2.pkl"
+V2_PREPROCESSOR_PATH = (
+    PROJECT_ROOT / "models" / "retrained_preprocessor_v2.pkl"
+)
 
-REPORT_PATH = Path("outputs/retraining/model_comparison_report.csv")
-JSON_REPORT_PATH = Path("outputs/retraining/model_comparison_report.json")
+REPORT_PATH = (
+    PROJECT_ROOT / "outputs" / "retraining" / "model_comparison_report.csv"
+)
+JSON_REPORT_PATH = (
+    PROJECT_ROOT / "outputs" / "retraining" / "model_comparison_report.json"
+)
 
 RECALL_THRESHOLD = 0.70
 

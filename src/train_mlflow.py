@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn
+import yaml
+from pathlib import Path
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
@@ -17,7 +19,25 @@ from sklearn.metrics import (
     RocCurveDisplay
 )
 
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def configure_mlflow(config):
+    tracking_uri = (
+        os.getenv("MLFLOW_TRACKING_URI")
+        or config["mlflow"].get("tracking_uri")
+        or f"sqlite:///{(PROJECT_ROOT / 'mlflow.db').as_posix()}"
+    )
+    mlflow.set_tracking_uri(tracking_uri)
+
+
 def train_and_track(run_name="RandomForest_Baseline", params=None):
+    os.chdir(PROJECT_ROOT)
+    with (PROJECT_ROOT / "config.yaml").open("r", encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+    configure_mlflow(config)
+
     if params is None:
         params = {
             "n_estimators": 100,

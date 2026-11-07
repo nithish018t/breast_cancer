@@ -1,9 +1,16 @@
 import os
 import json
+from pathlib import Path
+
 import numpy as np
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 
 def validate_preprocessing_outputs():
     print("[INFO] Validating Preprocessing Outputs...")
+    os.chdir(PROJECT_ROOT)
     
     # 1. Load the pipeline outputs
     try:
@@ -30,7 +37,7 @@ def validate_preprocessing_outputs():
         errors.append("Row mismatch between X_train and y_train.")
         
     # 4. Generate Transformation Summary Report
-    report = {4
+    report = {
         "validation_status": "PASSED" if not errors else "FAILED",
         "matrix_dimensions": {
             "X_train_shape": list(X_train.shape),

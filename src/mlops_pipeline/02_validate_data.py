@@ -6,7 +6,13 @@ import yaml
 
 from validation import validate_schema
 
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 def main():
+    os.chdir(PROJECT_ROOT)
+
     with open("config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 

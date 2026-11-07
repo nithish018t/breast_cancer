@@ -11,8 +11,9 @@ from api.model_loader import ModelLoader
 from api.preprocessing import clean_prediction_data
 
 
-X_TEST_PATH = Path("data/processed/X_test_raw.csv")
-Y_TEST_PATH = Path("data/processed/y_test.npy")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+X_TEST_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
+Y_TEST_PATH = PROJECT_ROOT / "data" / "processed" / "y_test.npy"
 
 
 def load_test_data():

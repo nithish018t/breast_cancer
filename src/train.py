@@ -1,9 +1,17 @@
+import os
+from pathlib import Path
+
 import numpy as np
 import joblib
 from sklearn.ensemble import RandomForestClassifier
 
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
 def run_training():
     print("Starting Model Training...")
+    os.chdir(PROJECT_ROOT)
     
     # 1. Load processed training data
     X_train_final = np.load('data/processed/X_train_final.npy')

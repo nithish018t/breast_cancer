@@ -3,13 +3,24 @@ import pandas as pd
 from pathlib import Path
 
 
-TRAIN_FEATURES_PATH = Path("data/processed/X_train_raw.csv")
-TRAIN_LABELS_PATH = Path("data/processed/y_train.npy")
-TEST_FEATURES_PATH = Path("data/processed/X_test_raw.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+TRAIN_FEATURES_PATH = PROJECT_ROOT / "data" / "processed" / "X_train_raw.csv"
+TRAIN_LABELS_PATH = PROJECT_ROOT / "data" / "processed" / "y_train.npy"
+TEST_FEATURES_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
 
-NEW_BATCH_PATH = Path("data/monitoring/drift/post_drift_training_data.csv")
-UPDATED_DATASET_PATH = Path("data/processed/updated_training_data.csv")
-SUMMARY_PATH = Path("outputs/retraining/updated_dataset_summary.csv")
+NEW_BATCH_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "monitoring"
+    / "drift"
+    / "post_drift_training_data.csv"
+)
+UPDATED_DATASET_PATH = (
+    PROJECT_ROOT / "data" / "processed" / "updated_training_data.csv"
+)
+SUMMARY_PATH = (
+    PROJECT_ROOT / "outputs" / "retraining" / "updated_dataset_summary.csv"
+)
 
 RANDOM_SEED = 42
 NEW_BATCH_SIZE = 1409

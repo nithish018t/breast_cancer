@@ -1,5 +1,6 @@
 import json
-import shutil
+import os
+import tempfile
 from pathlib import Path
 
 import joblib
@@ -17,6 +18,18 @@ def load_config():
 
     with open(project_root / "config.yaml", "r", encoding="utf-8") as file:
         return project_root, yaml.safe_load(file)
+
+
+def configure_mlflow(config, project_root):
+    tracking_uri = (
+        os.getenv("MLFLOW_TRACKING_URI")
+        or config["mlflow"].get("tracking_uri")
+    )
+    if not tracking_uri:
+        tracking_uri = f"sqlite:///{(project_root / 'mlflow.db').as_posix()}"
+
+    mlflow.set_tracking_uri(tracking_uri)
+    print(f"[INFO] MLflow tracking URI: {mlflow.get_tracking_uri()}")
 
 
 def get_production_model(client, model_name):
@@ -40,19 +53,10 @@ def get_production_model(client, model_name):
 
 def prepare_deployment():
     project_root, config = load_config()
-
     deployment_dir = project_root / "deployment"
-
     deployment_dir.mkdir(parents=True, exist_ok=True)
-    for artifact_name in ("model.pkl", "preprocessor.pkl", "model_metadata.json"):
-        artifact_path = deployment_dir / artifact_name
-        if artifact_path.exists():
-            artifact_path.unlink()
 
-    preprocessor_download_dir = deployment_dir / "preprocessing_pipeline"
-    if preprocessor_download_dir.exists():
-        shutil.rmtree(preprocessor_download_dir)
-
+    configure_mlflow(config, project_root)
     client = MlflowClient()
 
     model_version = get_production_model(client, MODEL_NAME)
@@ -73,65 +77,62 @@ def prepare_deployment():
     model_uri = f"models:/{model_name}/{version}"
     model = mlflow.sklearn.load_model(model_uri)
 
-    model_path = deployment_dir / "model.pkl"
-    joblib.dump(model, model_path)
+    with tempfile.TemporaryDirectory(
+        prefix=".deployment-staging-",
+        dir=deployment_dir,
+    ) as staging_dir:
+        staging_path = Path(staging_dir)
+        staged_model_path = staging_path / "model.pkl"
+        joblib.dump(model, staged_model_path)
+
+        print("[INFO] Downloading matching preprocessor...")
+        downloaded_preprocessor = client.download_artifacts(
+            run_id,
+            "preprocessing_pipeline/preprocessor.pkl",
+            dst_path=str(staging_path),
+        )
+        staged_preprocessor_path = Path(downloaded_preprocessor)
+
+        staged_metadata_path = staging_path / "model_metadata.json"
+        metadata = {
+            "model_name": model_name,
+            "model_version": str(version),
+            "model_stage": model_version.current_stage,
+            "run_id": run_id,
+            "model_source": model_source,
+            "model_id": model_source.split("/")[-1],
+            "preprocessor_artifact": "preprocessing_pipeline/preprocessor.pkl",
+            "source": "MLflow",
+        }
+        with staged_metadata_path.open("w", encoding="utf-8") as file:
+            json.dump(metadata, file, indent=4)
+
+        print("[INFO] Verifying staged deployment artifacts...")
+        if joblib.load(staged_model_path) is None:
+            raise RuntimeError("Model verification failed.")
+        if joblib.load(staged_preprocessor_path) is None:
+            raise RuntimeError("Preprocessor verification failed.")
+        with staged_metadata_path.open("r", encoding="utf-8") as file:
+            staged_metadata = json.load(file)
+        if staged_metadata != metadata:
+            raise RuntimeError("Deployment metadata verification failed.")
+
+        model_path = deployment_dir / "model.pkl"
+        preprocessor_path = deployment_dir / "preprocessor.pkl"
+        metadata_path = deployment_dir / "model_metadata.json"
+        os.replace(staged_model_path, model_path)
+        os.replace(staged_preprocessor_path, preprocessor_path)
+        os.replace(staged_metadata_path, metadata_path)
 
     print(f"[SUCCESS] Model saved to {model_path}")
-
-    print("[INFO] Downloading matching preprocessor...")
-
-    preprocessor_path = client.download_artifacts(
-        run_id,
-        "preprocessing_pipeline/preprocessor.pkl",
-        dst_path=str(deployment_dir),
-    )
-
-    downloaded_preprocessor = Path(preprocessor_path)
-
-    final_preprocessor_path = deployment_dir / "preprocessor.pkl"
-
-    if downloaded_preprocessor != final_preprocessor_path:
-        shutil.move(
-            downloaded_preprocessor,
-            final_preprocessor_path,
-        )
-
-    print(f"[SUCCESS] Preprocessor saved to {final_preprocessor_path}")
-
-    print("[INFO] Verifying deployment artifacts...")
-
-    loaded_model = joblib.load(model_path)
-    loaded_preprocessor = joblib.load(final_preprocessor_path)
-
-    if loaded_model is None:
-        raise RuntimeError("Model verification failed.")
-
-    if loaded_preprocessor is None:
-        raise RuntimeError("Preprocessor verification failed.")
-
-    metadata = {
-        "model_name": model_name,
-        "model_version": str(version),
-        "model_stage": model_version.current_stage,
-        "run_id": run_id,
-        "model_source": model_source,
-        "model_id": model_source.split("/")[-1],
-        "preprocessor_artifact": "preprocessing_pipeline/preprocessor.pkl",
-        "source": "MLflow",
-    }
-
-    metadata_path = deployment_dir / "model_metadata.json"
-
-    with open(metadata_path, "w", encoding="utf-8") as file:
-        json.dump(metadata, file, indent=4)
-
+    print(f"[SUCCESS] Preprocessor saved to {preprocessor_path}")
     print(f"[SUCCESS] Metadata saved to {metadata_path}")
 
     print("\n[INFO] Deployment bundle:")
     print("deployment/")
-    print("├── model.pkl")
-    print("├── preprocessor.pkl")
-    print("└── model_metadata.json")
+    print("+-- model.pkl")
+    print("+-- preprocessor.pkl")
+    print("+-- model_metadata.json")
 
     print("\n[SUCCESS] Deployment preparation completed.")
 

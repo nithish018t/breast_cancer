@@ -1,5 +1,10 @@
+from pathlib import Path
 import subprocess
 import sys
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 
 def execute_pipeline():
     print("[INFO] =========================================")
@@ -14,7 +19,11 @@ def execute_pipeline():
     
     for script in scripts:
         print(f"\n[INFO] ---> Executing {script}...")
-        result = subprocess.run([sys.executable, script])
+        script_path = PROJECT_ROOT / script
+        result = subprocess.run(
+            [sys.executable, str(script_path)],
+            cwd=PROJECT_ROOT,
+        )
         
         if result.returncode != 0:
             print(f"[ERROR] Pipeline halted. {script} caught an error.")

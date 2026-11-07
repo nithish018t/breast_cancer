@@ -1,7 +1,13 @@
 import os
+from pathlib import Path
+
 import pandas as pd
 import pandera.pandas as pa
 from pandera import Column, Check
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 
 def get_telco_schema():
     """Defines the strict schema specification for the Telco Churn dataset."""
@@ -47,16 +53,16 @@ def validate_schema(df, output_report_name="schema_validation_errors.csv"):
         failures = err.failure_cases[['schema_context', 'column', 'check', 'failure_case', 'index']]
         print(failures.to_string())
         
-        os.makedirs("artifacts", exist_ok=True)
-        report_path = os.path.join("artifacts", output_report_name)
+        report_path = PROJECT_ROOT / "artifacts" / output_report_name
+        report_path.parent.mkdir(parents=True, exist_ok=True)
         failures.to_csv(report_path, index=False)
         print(f"[INFO] Detailed failure report saved to '{report_path}'.")
         return False
 
 if __name__ == "__main__":
     # When run directly, it only validates the clean production data
-    data_path = 'data/raw/churn.csv'
-    if os.path.exists(data_path):
+    data_path = PROJECT_ROOT / "data" / "raw" / "churn.csv"
+    if data_path.is_file():
         raw_df = pd.read_csv(data_path)
         validate_schema(raw_df, output_report_name="baseline_validation.csv")
     else:

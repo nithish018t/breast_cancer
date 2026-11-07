@@ -4,7 +4,8 @@ from pathlib import Path
 import pandas as pd
 
 
-LOG_PATH = Path("logs/inference/inference_log.jsonl")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LOG_PATH = PROJECT_ROOT / "logs" / "inference" / "inference_log.jsonl"
 
 
 def load_logs():

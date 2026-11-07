@@ -6,8 +6,12 @@ import mlflow
 import mlflow.sklearn
 import numpy as np
 import yaml
+from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def configure_mlflow(config):
@@ -18,6 +22,7 @@ def configure_mlflow(config):
 
 def train_and_register_model():
     print("[INFO] --- Starting MLflow Run with Model Registry ---")
+    os.chdir(PROJECT_ROOT)
 
     with open("config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)

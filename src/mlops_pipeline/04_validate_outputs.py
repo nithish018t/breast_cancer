@@ -2,10 +2,15 @@ import os
 import json
 import numpy as np
 import sys
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def validate_preprocessing_outputs():
     print("[INFO] Validating Preprocessing Outputs...")
+    os.chdir(PROJECT_ROOT)
 
     try:
         X_train = np.load("data/processed/X_train_final.npy")

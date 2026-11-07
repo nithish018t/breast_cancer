@@ -2,11 +2,13 @@ import pandas as pd
 from pathlib import Path
 
 
-DATA_DRIFT_PATH = Path("outputs/drift/data_drift_report.csv")
-PREDICTION_DRIFT_PATH = Path("outputs/drift/prediction_drift_report.csv")
-CONCEPT_DRIFT_PATH = Path("outputs/drift/concept_drift_report.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DRIFT_REPORTS_DIR = PROJECT_ROOT / "outputs" / "drift"
 
-OUTPUT_PATH = Path("outputs/drift/drift_analysis_report.csv")
+DATA_DRIFT_PATH = DRIFT_REPORTS_DIR / "data_drift_report.csv"
+PREDICTION_DRIFT_PATH = DRIFT_REPORTS_DIR / "prediction_drift_report.csv"
+CONCEPT_DRIFT_PATH = DRIFT_REPORTS_DIR / "concept_drift_report.csv"
+OUTPUT_PATH = DRIFT_REPORTS_DIR / "drift_analysis_report.csv"
 
 
 def load_reports():

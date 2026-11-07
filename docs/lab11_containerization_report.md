@@ -54,11 +54,11 @@ Production
 
 MLflow Run ID:
 
-e6b24fcde8574a95a7bc1ce6da74b0dc
+f1547c77833841159e6f06132874bcb1
 
 Model ID:
 
-m-0b44c639cae04d2da060f7b7f01e34d1
+m-cc73a2f352a84c4a8d3dea49c8b94a11
 
 The deployment preparation process extracted the Production model
 and the matching preprocessor from the same MLflow run.
@@ -167,11 +167,11 @@ Container prediction:
 
 Local churn probability:
 
-0.41734259770833143
+0.323844276666156
 
 Container churn probability:
 
-0.41734259770833143
+0.323844276666156
 
 Prediction match:
 
@@ -457,15 +457,22 @@ Kubernetes-managed inference.
 
 ---
 
-# 19. Next Step
+# 19. Lab 11 Closeout Status
 
-The remaining Lab 11 activities are:
+11.19 — Deployment and debugging report: documented in
+`docs/lab11_deployment_debugging_report.md`.
 
-11.19 — Deployment and Debugging Report
+11.20 — Final validation: the current Docker deployment was
+revalidated on 2026-11-06; results and the Kubernetes verification
+limitation are recorded in Section 20.
 
-11.20 — Final Lab 11 Validation
+The Kubernetes scaling, interruption, recovery, and service checks
+in Sections 12–16 are the results recorded during the earlier Lab 11
+run. They could not be independently rechecked during the current
+validation because the local kubectl configuration has no active
+context.
 
-After Lab 11, Lab 12 will focus on:
+After Lab 11, Lab 12 focuses on:
 
 - Monitoring
 - Inference logging
@@ -479,3 +486,77 @@ After Lab 11, Lab 12 will focus on:
 - Model comparison
 - Updated model validation
 - Deployment consistency
+
+---
+
+# 20. Final Lab 11 Validation — 2026-11-06
+
+## 20.1 Docker API
+
+The current Docker container was inspected without restarting or
+modifying it.
+
+Container:
+
+`churn-prediction-api-1`
+
+Image:
+
+`churn-prediction-api:local`
+
+Container state:
+
+`running (healthy)`
+
+Host port:
+
+`8001` mapped to container port `8000`
+
+The live `GET /health` request returned:
+
+```json
+{"status":"healthy"}
+```
+
+The live `GET /metadata` request confirmed that the model and
+preprocessor were loaded. The deployment bundle inside the image
+matched the project bundle:
+
+- Model: `Telco_Churn_Production_Model`, version `1`
+- MLflow Run ID: `f1547c77833841159e6f06132874bcb1`
+- Model ID: `m-cc73a2f352a84c4a8d3dea49c8b94a11`
+
+## 20.2 Local vs Container Prediction
+
+The same customer payload was submitted to the local API and the
+running Docker API. Both returned HTTP 200 and the same result:
+
+```json
+{
+  "prediction": 0,
+  "churn_probability": 0.323844276666156
+}
+```
+
+Prediction match: `True`
+
+Probability match: `True`
+
+## 20.3 Kubernetes Verification Limitation
+
+Current Kubernetes verification could not run. `kubectl config
+get-contexts` returned no configured contexts, and
+`kubectl config current-context` reported that no current context is
+set. No Kubernetes resources were changed.
+
+Therefore, the earlier Kubernetes results in Sections 12–16 remain
+documented as results from the previous Lab 11 run, but current
+Kubernetes deployment, scaling, service, and recovery status remain
+unverified until a Kubernetes context is configured.
+
+## 20.4 Final Status
+
+- Docker API health and model readiness: `PASSED`
+- Deployment bundle provenance match: `PASSED`
+- Local/container prediction consistency: `PASSED`
+- Current Kubernetes validation: `BLOCKED — no kubectl context`

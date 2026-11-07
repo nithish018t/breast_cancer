@@ -3,13 +3,19 @@ import json
 import joblib
 import pandas as pd
 import numpy as np
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import KNNImputer
 
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
 def run_preprocessing():
     print("Starting Preprocessing Pipeline...")
-    
+    os.chdir(PROJECT_ROOT)
+
     # 1. Load the raw data
     data_path = 'data/raw/churn.csv'
     df = pd.read_csv(data_path)

@@ -3,9 +3,10 @@ import pandas as pd
 from pathlib import Path
 from scipy.stats import ks_2samp
 
-BASELINE_PATH = Path("data/processed/X_test_raw.csv")
-EVOLVED_PATH = Path("data/monitoring/drift/evolved_data.csv")
-REPORT_PATH = Path("outputs/drift/data_drift_report.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BASELINE_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
+EVOLVED_PATH = PROJECT_ROOT / "data" / "monitoring" / "drift" / "evolved_data.csv"
+REPORT_PATH = PROJECT_ROOT / "outputs" / "drift" / "data_drift_report.csv"
 
 NUMERICAL_COLUMNS = ["MonthlyCharges", "tenure", "TotalCharges"]
 CATEGORICAL_COLUMNS = ["Contract", "InternetService", "PaymentMethod"]

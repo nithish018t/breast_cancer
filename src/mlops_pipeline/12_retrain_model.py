@@ -16,20 +16,32 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
-UPDATED_DATASET_PATH = Path("data/processed/updated_training_data.csv")
-TEST_FEATURES_PATH = Path("data/processed/X_test_raw.csv")
-TEST_LABELS_PATH = Path("data/processed/y_test.npy")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+UPDATED_DATASET_PATH = (
+    PROJECT_ROOT / "data" / "processed" / "updated_training_data.csv"
+)
+TEST_FEATURES_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
+TEST_LABELS_PATH = PROJECT_ROOT / "data" / "processed" / "y_test.npy"
 
-MODEL_V2_PATH = Path("models/retrained_model_v2.pkl")
-PREPROCESSOR_V2_PATH = Path("models/retrained_preprocessor_v2.pkl")
-REPORT_PATH = Path("outputs/retraining/retraining_report.json")
+MODEL_V2_PATH = PROJECT_ROOT / "models" / "retrained_model_v2.pkl"
+PREPROCESSOR_V2_PATH = (
+    PROJECT_ROOT / "models" / "retrained_preprocessor_v2.pkl"
+)
+REPORT_PATH = (
+    PROJECT_ROOT / "outputs" / "retraining" / "retraining_report.json"
+)
 
 
 def configure_mlflow(config):
-    tracking_uri = os.getenv("MLFLOW_TRACKING_URI") or config["mlflow"].get("tracking_uri")
+    tracking_uri = (
+        os.getenv("MLFLOW_TRACKING_URI")
+        or config["mlflow"].get("tracking_uri")
+    )
+    if not tracking_uri:
+        tracking_uri = f"sqlite:///{(PROJECT_ROOT / 'mlflow.db').as_posix()}"
 
-    if tracking_uri:
-        mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_tracking_uri(tracking_uri)
+    print(f"[INFO] MLflow tracking URI: {mlflow.get_tracking_uri()}")
 
 
 def clean_dataframe(df, target_column="Churn"):
@@ -127,7 +139,7 @@ def main():
     print("LAB 12.13 - MODEL RETRAINING")
     print("=" * 70)
 
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    with (PROJECT_ROOT / "config.yaml").open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     configure_mlflow(config)

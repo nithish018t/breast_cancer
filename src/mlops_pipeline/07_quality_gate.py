@@ -3,10 +3,15 @@ import os
 import sys
 
 import yaml
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def run_quality_gate():
     print("[INFO] Starting Model Quality Gate...")
+    os.chdir(PROJECT_ROOT)
 
     with open("config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)

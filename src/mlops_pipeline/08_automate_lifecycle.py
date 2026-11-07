@@ -5,6 +5,10 @@ import sys
 import mlflow
 import yaml
 from mlflow.tracking import MlflowClient
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def configure_mlflow(config):
@@ -21,6 +25,7 @@ def save_lifecycle_report(report):
 
 def automate_model_lifecycle():
     print("[INFO] Starting Automated Model Lifecycle Manager...")
+    os.chdir(PROJECT_ROOT)
 
     with open("config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)

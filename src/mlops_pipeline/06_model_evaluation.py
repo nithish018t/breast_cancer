@@ -5,6 +5,7 @@ import sys
 import joblib
 import numpy as np
 import yaml
+from pathlib import Path
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -15,8 +16,12 @@ from sklearn.metrics import (
 )
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
 def run_evaluation():
     print("[INFO] Starting ML Pipeline Model Evaluation...")
+    os.chdir(PROJECT_ROOT)
 
     with open("config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)

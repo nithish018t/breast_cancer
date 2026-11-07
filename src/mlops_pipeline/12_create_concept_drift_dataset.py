@@ -3,9 +3,16 @@ import pandas as pd
 from pathlib import Path
 
 
-FEATURES_PATH = Path("data/monitoring/drift/evolved_data.csv")
-LABELS_PATH = Path("data/processed/y_test.npy")
-OUTPUT_PATH = Path("data/monitoring/drift/evolved_labeled_data.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+FEATURES_PATH = PROJECT_ROOT / "data" / "monitoring" / "drift" / "evolved_data.csv"
+LABELS_PATH = PROJECT_ROOT / "data" / "processed" / "y_test.npy"
+OUTPUT_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "monitoring"
+    / "drift"
+    / "evolved_labeled_data.csv"
+)
 
 RANDOM_SEED = 42
 

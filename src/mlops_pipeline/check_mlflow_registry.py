@@ -1,19 +1,26 @@
 import os
+from pathlib import Path
 
 import mlflow
 import yaml
 from mlflow.tracking import MlflowClient
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
 def main():
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    config_path = PROJECT_ROOT / "config.yaml"
+    with config_path.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI") or config["mlflow"].get("tracking_uri")
     model_name = config["registry"]["model_name"]
 
-    if tracking_uri:
-        mlflow.set_tracking_uri(tracking_uri)
+    if not tracking_uri:
+        tracking_uri = f"sqlite:///{(PROJECT_ROOT / 'mlflow.db').as_posix()}"
+
+    mlflow.set_tracking_uri(tracking_uri)
 
     client = MlflowClient()
     effective_uri = mlflow.get_tracking_uri()

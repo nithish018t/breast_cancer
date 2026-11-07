@@ -11,6 +11,7 @@ import mlflow.sklearn
 import numpy as np
 import pandas as pd
 import yaml
+from mlflow.tracking import MlflowClient
 
 
 # Project root:
@@ -27,8 +28,10 @@ def configure_mlflow(config):
         or config["mlflow"].get("tracking_uri")
     )
 
-    if tracking_uri:
-        mlflow.set_tracking_uri(tracking_uri)
+    if not tracking_uri:
+        tracking_uri = f"sqlite:///{(PROJECT_ROOT / 'mlflow.db').as_posix()}"
+
+    mlflow.set_tracking_uri(tracking_uri)
 
 
 def run_script(script_path):
@@ -52,8 +55,61 @@ def restore_file(backup_path, original_path):
     os.replace(backup_path, original_path)
 
 
+def load_production_model_for_recovery(config):
+    model_name = config["registry"]["model_name"]
+    client = MlflowClient()
+    production_models = [
+        version
+        for version in client.search_model_versions(f"name='{model_name}'")
+        if version.current_stage == "Production"
+    ]
+
+    if not production_models:
+        raise RuntimeError(f"No Production model is registered for {model_name}.")
+
+    production = production_models[0]
+    production_uri = f"models:/{model_name}/Production"
+
+    try:
+        return mlflow.sklearn.load_model(production_uri)
+    except mlflow.exceptions.MlflowException as registry_error:
+        metadata_path = PROJECT_ROOT / "deployment" / "model_metadata.json"
+        deployment_model_path = PROJECT_ROOT / "deployment" / "model.pkl"
+        if not metadata_path.is_file() or not deployment_model_path.is_file():
+            raise RuntimeError(
+                "The MLflow Production artifact is unavailable and no complete "
+                "deployment recovery bundle exists."
+            ) from registry_error
+
+        with metadata_path.open("r", encoding="utf-8") as metadata_file:
+            metadata = json.load(metadata_file)
+
+        expected = {
+            "model_name": model_name,
+            "model_version": str(production.version),
+            "run_id": production.run_id,
+            "model_source": production.source,
+        }
+        mismatches = {
+            key: (metadata.get(key), value)
+            for key, value in expected.items()
+            if metadata.get(key) != value
+        }
+        if mismatches:
+            raise RuntimeError(
+                "The deployment recovery bundle does not match the current "
+                f"Production model: {mismatches}"
+            ) from registry_error
+
+        print(
+            "[WARNING] MLflow model artifact is unavailable. "
+            "Using the metadata-verified Production deployment bundle."
+        )
+        return joblib.load(deployment_model_path)
+
+
 def test_missing_data(config):
-    print("\n[LAB 9] Scenario 1: Missing data")
+    print("\n[LAB 9] Scenario 1: Missing data", flush=True)
 
     data_path = PROJECT_ROOT / config["data"]["raw_path"]
     backup_path = Path(str(data_path) + ".lab9_backup")
@@ -79,7 +135,7 @@ def test_missing_data(config):
 
 
 def test_invalid_datatype(config):
-    print("\n[LAB 9] Scenario 2: Invalid datatype")
+    print("\n[LAB 9] Scenario 2: Invalid datatype", flush=True)
 
     data_path = PROJECT_ROOT / config["data"]["raw_path"]
     backup_path = Path(str(data_path) + ".lab9_backup")
@@ -114,7 +170,7 @@ def test_invalid_datatype(config):
 
 
 def test_schema_mismatch(config):
-    print("\n[LAB 9] Scenario 3: Schema mismatch")
+    print("\n[LAB 9] Scenario 3: Schema mismatch", flush=True)
 
     data_path = PROJECT_ROOT / config["data"]["raw_path"]
     backup_path = Path(str(data_path) + ".lab9_backup")
@@ -145,7 +201,7 @@ def test_schema_mismatch(config):
 
 
 def test_preprocessing_inconsistency(config):
-    print("\n[LAB 9] Scenario 4: Preprocessing inconsistency")
+    print("\n[LAB 9] Scenario 4: Preprocessing inconsistency", flush=True)
 
     processed_dir = PROJECT_ROOT / config["data"]["processed_dir"]
 
@@ -193,7 +249,7 @@ def test_preprocessing_inconsistency(config):
 
 
 def test_missing_model_with_recovery(config):
-    print("\n[LAB 9] Scenario 5: Missing model artifact + recovery")
+    print("\n[LAB 9] Scenario 5: Missing model artifact + recovery", flush=True)
 
     model_path = PROJECT_ROOT / config["paths"]["model"]
     model_name = config["registry"]["model_name"]
@@ -228,17 +284,8 @@ def test_missing_model_with_recovery(config):
         # Recover the Production model from MLflow.
         configure_mlflow(config)
 
-        production_uri = (
-            f"models:/{model_name}/Production"
-        )
-
-        print(
-            f"[INFO] Recovering model from {production_uri}..."
-        )
-
-        production_model = mlflow.sklearn.load_model(
-            production_uri
-        )
+        print(f"[INFO] Recovering Production model for {model_name}...")
+        production_model = load_production_model_for_recovery(config)
 
         model_path.parent.mkdir(
             parents=True,
@@ -275,14 +322,18 @@ def test_missing_model_with_recovery(config):
 
 
 def run_failure_tests():
-    print("[INFO] ==================================================")
-    print("[INFO] Failure Tests: Pipeline Failure Handling and Recovery")
-    print("[INFO] ==================================================")
+    print("[INFO] ==================================================", flush=True)
+    print("[INFO] Failure Tests: Pipeline Failure Handling and Recovery", flush=True)
+    print("[INFO] ==================================================", flush=True)
 
+    os.chdir(PROJECT_ROOT)
     config_path = PROJECT_ROOT / "config.yaml"
 
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
+
+    configure_mlflow(config)
+    print(f"[INFO] MLflow tracking URI: {mlflow.get_tracking_uri()}", flush=True)
 
     repetitions = int(config["lab9"]["repetitions"])
 
@@ -302,7 +353,8 @@ def run_failure_tests():
             f"\n{'=' * 70}"
             f"\n[INFO] Lab 9 Repetition "
             f"{repetition}/{repetitions}"
-            f"\n{'=' * 70}"
+            f"\n{'=' * 70}",
+            flush=True
         )
 
         repetition_results = []

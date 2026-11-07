@@ -11,9 +11,10 @@ from api.model_loader import ModelLoader
 from api.preprocessing import clean_prediction_data
 
 
-BASELINE_PATH = Path("data/processed/X_test_raw.csv")
-EVOLVED_PATH = Path("data/monitoring/drift/evolved_data.csv")
-REPORT_PATH = Path("outputs/drift/prediction_drift_report.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BASELINE_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
+EVOLVED_PATH = PROJECT_ROOT / "data" / "monitoring" / "drift" / "evolved_data.csv"
+REPORT_PATH = PROJECT_ROOT / "outputs" / "drift" / "prediction_drift_report.csv"
 
 KS_THRESHOLD = 0.10
 

@@ -1,7 +1,14 @@
+import sys
 import time
 import uuid
+from pathlib import Path
 
 from contextlib import asynccontextmanager
+
+# Support running this file directly as well as importing it as api.main.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import pandas as pd
 from fastapi import FastAPI, Request, HTTPException
@@ -296,3 +303,9 @@ def predict_batch(data: BatchPredictionRequest):
             status_code=500,
             detail="An unexpected error occurred during batch prediction",
         )
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=8000)
