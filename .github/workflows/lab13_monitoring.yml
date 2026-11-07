@@ -15,17 +15,22 @@ jobs:
       - name: Run MLOps monitoring trigger
         shell: powershell
         run: |
-          Set-Location "C:\Users\jnane\Favorites\churn-prediction"
-          & ".\venv\Scripts\python.exe" ".\src\mlops_pipeline\12_monitor_trigger.py"
+          $projectPath = "C:\Users\tnaga\OneDrive\Desktop\churn-prediction-full-project-files\churn-prediction"
+          $pythonPath = "C:\Users\tnaga\OneDrive\Desktop\churn-prediction-full-project-files\.venv\Scripts\python.exe"
+          Set-Location $projectPath
+          & $pythonPath ".\src\mlops_pipeline\12_monitor_trigger.py"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Show monitoring result
         shell: powershell
         run: |
-          Set-Location "C:\Users\jnane\Favorites\churn-prediction"
+          $projectPath = "C:\Users\tnaga\OneDrive\Desktop\churn-prediction-full-project-files\churn-prediction"
+          Set-Location $projectPath
           if (Test-Path ".\outputs\monitoring\monitor_trigger_report.json") {
               Get-Content ".\outputs\monitoring\monitor_trigger_report.json"
           } else {
-              Write-Host "Monitoring report was not generated."
+              Write-Error "Monitoring report was not generated."
+              exit 1
           }
 
       - name: Verify Kubernetes

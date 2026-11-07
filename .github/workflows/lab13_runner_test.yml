@@ -13,7 +13,11 @@ jobs:
     steps:
       - name: Check Python
         shell: powershell
-        run: python --version
+        run: |
+          $pythonPath = "C:\Users\tnaga\OneDrive\Desktop\churn-prediction-full-project-files\.venv\Scripts\python.exe"
+          if (-not (Test-Path $pythonPath)) { throw "Project Python not found: $pythonPath" }
+          & $pythonPath --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check Git
         shell: powershell
@@ -30,6 +34,11 @@ jobs:
       - name: Check Project
         shell: powershell
         run: |
+          $projectPath = "C:\Users\tnaga\OneDrive\Desktop\churn-prediction-full-project-files\churn-prediction"
+          if (-not (Test-Path $projectPath)) { throw "Project folder not found: $projectPath" }
           Write-Host "Runner: $env:RUNNER_NAME"
           Write-Host "Workspace: $env:GITHUB_WORKSPACE"
-          Test-Path "C:\Users\jnane\Favorites\churn-prediction"
+          Write-Host "Project: $projectPath"
+          if (-not (Test-Path (Join-Path $projectPath "src\mlops_pipeline\12_monitor_trigger.py"))) {
+              throw "Lab 13 monitoring script is missing from $projectPath"
+          }
