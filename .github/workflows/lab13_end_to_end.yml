@@ -45,6 +45,18 @@ jobs:
           python src\mlops_pipeline\10_failure_injection.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Run Lab 12 monitoring and challenger checks
+        shell: powershell
+        run: |
+          python src\mlops_pipeline\12_monitor_trigger.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python src\mlops_pipeline\12_retrain_model.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python src\mlops_pipeline\12_model_comparison.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python src\mlops_pipeline\12_update_mlflow_registry.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Build Docker image
         shell: powershell
         run: |
@@ -141,4 +153,5 @@ jobs:
             reports/**
             logs/**
             outputs/**
+            models/registry/**
           if-no-files-found: ignore

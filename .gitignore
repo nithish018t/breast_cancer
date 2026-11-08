@@ -9,6 +9,7 @@ data/raw/*.csv
 !data/raw/data.csv
 data/processed/*.npy
 data/processed/*.csv
+data/monitoring/incoming/
 
 models/
 

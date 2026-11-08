@@ -1,0 +1,55 @@
+name: Lab 12 - Breast Cancer Monitoring and Retraining
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "config.yaml"
+      - "src/mlops_pipeline/12_*.py"
+      - "src/mlops_pipeline/lab12_monitoring.py"
+      - "api/monitoring_logger.py"
+      - "data/raw/data.csv"
+      - ".github/workflows/lab12_monitoring.yml"
+
+jobs:
+  monitoring:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-api.txt pytest
+
+      - name: Train the current production baseline
+        run: python src/breast_cancer_pipeline.py
+
+      - name: Run Lab 12 monitoring and drift analysis
+        run: python src/mlops_pipeline/12_monitor_trigger.py
+
+      - name: Train, compare, and record a challenger candidate
+        run: |
+          python src/mlops_pipeline/12_retrain_model.py
+          python src/mlops_pipeline/12_model_comparison.py
+          python src/mlops_pipeline/12_update_mlflow_registry.py
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Upload Lab 12 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab12-monitoring-${{ github.run_number }}
+          path: |
+            outputs/drift/**
+            outputs/monitoring/**
+            outputs/retraining/**
+            models/registry/**
+          if-no-files-found: ignore

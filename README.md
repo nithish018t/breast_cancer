@@ -73,7 +73,9 @@ Predictions are not medical diagnoses. This model is not validated for clinical 
 
 The Git branching, commit, push, and pull-request guide is [GIT_WORKFLOW.md](GIT_WORKFLOW.md).
 GitHub Actions definitions are under `.github/workflows/`: `ci.yml`, `lab8_ci.yml`,
-`lab9_failure_tests.yml`, `lab13_runner_test.yml`, and `lab13_end_to_end.yml`.
-See [Lab 8](docs/LAB8_CI_REPORT.md), [Lab 9](docs/LAB9_FAILURE_HANDLING_REPORT.md),
-and [Lab 13](docs/LAB13_END_TO_END.md) for what each workflow runs and how to
-review its evidence.
+`lab9_failure_tests.yml`, `lab12_monitoring.yml`, `lab13_runner_test.yml`, and
+`lab13_end_to_end.yml`. See [Lab 8](docs/LAB8_CI_REPORT.md),
+[Lab 9](docs/LAB9_FAILURE_HANDLING_REPORT.md),
+[Lab 12](docs/LAB12_MONITORING.md), and
+[Lab 13](docs/LAB13_END_TO_END.md) for what each workflow runs and how to review
+its evidence.

@@ -6,6 +6,7 @@ repository root. The GitHub Actions workflows are in `.github/workflows/`:
 - `ci.yml` runs training, tests, and a Docker build on GitHub-hosted runners.
 - `lab8_ci.yml` runs the MLOps pipeline for Lab 8.
 - `lab9_failure_tests.yml` runs Lab 9's invalid-input and recovery checks.
+- `lab12_monitoring.yml` runs breast-cancer drift, performance, and candidate-model checks.
 - `lab13_runner_test.yml` checks the self-hosted Windows runner prerequisites.
 - `lab13_end_to_end.yml` runs the Lab 13 train-to-Kubernetes integration.
 

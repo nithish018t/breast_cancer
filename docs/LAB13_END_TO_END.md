@@ -27,10 +27,12 @@ project path. It then:
 
 1. Trains and evaluates the model and runs the MLOps stages.
 2. Runs the test suite and Lab 9 invalid-data checks.
-3. Builds the Docker image and checks `/health` plus a real `/predict` request.
-4. Applies the Kubernetes manifests, waits for rollout, and checks `/health`
+3. Runs Lab 12 monitoring, retraining, challenger comparison, and local
+   candidate-registry recording.
+4. Builds the Docker image and checks `/health` plus a real `/predict` request.
+5. Applies the Kubernetes manifests, waits for rollout, and checks `/health`
    plus a real `/predict` request through the service.
-5. Uploads generated reports, logs, and prediction outputs as a workflow
+6. Uploads generated reports, logs, and prediction outputs as a workflow
    artifact.
 
 The workflow updates the `breast-cancer-api` Kubernetes Deployment in the

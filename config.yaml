@@ -64,6 +64,13 @@ quality_gate:
   metric: roc_auc
   minimum_value: 0.90
 
+monitoring:
+  drift_ks_threshold: 0.10
+  performance_windows: 3
+  synthetic_drift_fraction: 0.25
+  synthetic_label_flip_fraction: 0.20
+  incoming_data_path: data/monitoring/incoming/labeled_data.csv
+
 paths:
   model: deployment/model.pkl
   model_metadata: deployment/model_metadata.json
