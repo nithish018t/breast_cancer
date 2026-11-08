@@ -1,56 +1,34 @@
-import os
-import sys
 from pathlib import Path
+import sys
 
 import pandas as pd
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "src" / "mlops_pipeline"))
 
-from src.validate_data import validate_schema
+from validation import validate_schema
+from breast_cancer_pipeline import load_config
 
 
-def simulate_corrupted_data(df):
-    """Simulates real-world data corruption scenarios across multiple columns."""
-    print("[INFO] Injecting simulated faults into data...")
-    corrupted_df = df.copy()
-    
-    # 1. Invalid numerical values (negative tenure)
-    corrupted_df.loc[0, 'tenure'] = -5
-    
-    # 2. Invalid categorical value
-    corrupted_df.loc[1, 'Contract'] = 'Lifetime'
-    
-    # 3. Invalid target label
-    corrupted_df.loc[2, 'Churn'] = 'Maybe'
-    
-    # 4. Datatype mismatch (injecting string into float column)
-    corrupted_df['MonthlyCharges'] = corrupted_df['MonthlyCharges'].astype(object)
-    corrupted_df.loc[3, 'MonthlyCharges'] = "One Hundred"
-    
-    # 5. Schema inconsistency (unexpected extra column)
-    corrupted_df['unexpected_column'] = 123
-    
-    # 6. Missing required attribute (dropping a column)
-    corrupted_df = corrupted_df.drop(columns=['gender'])
-    
-    return corrupted_df
+def simulate_corrupted_data(frame):
+    corrupted = frame.copy()
+    corrupted.loc[corrupted.index[0], "diagnosis"] = "unknown"
+    corrupted["radius_mean"] = corrupted["radius_mean"].astype(object)
+    corrupted.loc[corrupted.index[1], "radius_mean"] = "not-a-number"
+    return corrupted.drop(columns=["texture_mean"])
+
+
+def main():
+    dataset_path = PROJECT_ROOT / load_config()["data"]["raw_path"]
+    frame = pd.read_csv(dataset_path)
+    corrupted = simulate_corrupted_data(frame)
+    if validate_schema(
+        corrupted, output_report_name="corrupted_data_validation.json"
+    ):
+        raise AssertionError("Corrupted breast-cancer data unexpectedly passed.")
+    print("[SUCCESS] Invalid data was rejected without changing the source dataset.")
+
 
 if __name__ == "__main__":
-    os.chdir(PROJECT_ROOT)
-    data_path = 'data/raw/churn.csv'
-    
-    try:
-        raw_df = pd.read_csv(data_path)
-        
-        # Generate corrupted dataframe
-        corrupted_df = simulate_corrupted_data(raw_df)
-        
-        # Pass it to our clean validation module
-        print("\n--- Running Validation on Corrupted Data ---")
-        validate_schema(corrupted_df, output_report_name="corrupted_simulation_errors.csv")
-        
-    except FileNotFoundError:
-        print(f"[ERROR] Could not find data file at {data_path}.")
+    main()

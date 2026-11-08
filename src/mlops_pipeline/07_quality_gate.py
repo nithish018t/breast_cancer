@@ -38,7 +38,7 @@ def run_quality_gate():
     os.makedirs(os.path.dirname(config["paths"]["quality_gate_report"]), exist_ok=True)
 
     gate_report = {
-        "stage": "Lab 8 - Model Quality Gate",
+        "stage": "Breast Cancer Diagnosis Model Quality Gate",
         "metric": metric_name,
         "minimum_value": minimum_value,
         "actual_value": actual_value,

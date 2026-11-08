@@ -1,13 +1,8 @@
 {
-    "status": "success",
-    "model_name": "Telco_Churn_Production_Model",
-    "decision_metric": "recall",
-    "candidate_version": 7,
-    "candidate_run_id": "a31d2885f36041fe86d219f117921111",
-    "candidate_metric": 0.7219251336898396,
-    "production_version_before": 1,
-    "production_metric_before": 0.7219251336898396,
-    "promoted": false,
-    "decision": "ARCHIVED",
-    "production_version_after": 1
+  "status": "success",
+  "model_name": "Breast_Cancer_Diagnosis_Model",
+  "decision_metric": "roc_auc",
+  "candidate_metric": 0.9980158730158729,
+  "promoted": true,
+  "decision": "PROMOTED"
 }

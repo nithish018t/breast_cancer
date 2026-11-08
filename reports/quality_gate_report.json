@@ -1,7 +1,7 @@
 {
-    "stage": "Lab 8 - Model Quality Gate",
-    "metric": "recall",
-    "minimum_value": 0.7,
-    "actual_value": 0.7219,
+    "stage": "Breast Cancer Diagnosis Model Quality Gate",
+    "metric": "roc_auc",
+    "minimum_value": 0.9,
+    "actual_value": 0.9980158730158729,
     "status": "PASSED"
 }

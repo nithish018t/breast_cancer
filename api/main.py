@@ -1,311 +1,132 @@
 import sys
 import time
-import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from contextlib import asynccontextmanager
-
-# Support running this file directly as well as importing it as api.main.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import pandas as pd
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.model_loader import ModelLoader
-from api.preprocessing import clean_prediction_data
-from api.schemas import CustomerInput, PredictionResponse, BatchPredictionRequest, BatchPredictionResponse
 from api.monitoring_logger import log_inference
+from api.preprocessing import clean_prediction_data
+from api.schemas import (
+    BatchPredictionRequest,
+    BatchPredictionResponse,
+    BreastCancerInput,
+    ErrorDetail,
+    ErrorResponse,
+    PredictionResponse,
+)
 
 model_loader = ModelLoader()
 
 
-# @app.on_event("startup")
-# def startup_event():
-#     model_loader.load()
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    #startup
     model_loader.load()
-
     yield
-
-    #shutdowon
-    print("[INFO] Churn Prediction API shutting down...")
 
 
 app = FastAPI(
-    title="Churn Prediction API",
-    description="Lab 10 - ML Model Serving and API Engineering",
+    title="Breast Cancer Diagnosis API",
+    description="Predicts benign or malignant diagnosis from breast-mass measurements.",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
+
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    request_id = uuid.uuid4().hex[:12]
-    errors = []
-
-    for error in exc.errors():
-        locations = [str(location) for location in error["loc"] if location != "body"]
-        field = ".".join(locations)
-
-        errors.append({
-            "field": field,
-            "message": error["msg"],
-        })
-
-    log_inference(
-        input_data={},
-        latency_ms=None,
-        status="failure",
-        error="Request validation failed",
-        model_name=model_loader.model_name,
-        model_version=model_loader.model_version,
-        run_id=model_loader.run_id,
-        request_id=request_id,
-    )
-
+async def validation_exception_handler(request, exc):
+    details = [
+        ErrorDetail(
+            field=".".join(str(part) for part in error["loc"] if part != "body"),
+            message=error["msg"],
+        ).model_dump()
+        for error in exc.errors()
+    ]
     return JSONResponse(
         status_code=422,
-        content={
-            "status": "error",
-            "message": "Request validation failed",
-            "details": errors,
-        },
+        content=ErrorResponse(
+            status="error",
+            message="Request validation failed",
+            details=details,
+        ).model_dump(),
     )
 
-
-@app.exception_handler(HTTPException)
-async def http_exception_handler(
-    request: Request,
-    exc: HTTPException,
-):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "status": "error",
-            "message": "Prediction service unavailable",
-            "details": [
-                {
-                    "field": "prediction",
-                    "message": str(exc.detail),
-                }
-            ],
-        },
-    )
 
 @app.get("/")
 def root():
-    return {
-        "message": "Churn Prediction API is running",
-        "lab": "Lab 10",
-        "status": "success",
-    }
+    return {"message": "Breast Cancer Diagnosis API is running", "status": "success"}
 
 
 @app.get("/health")
 def health():
     return {
-        "status": "healthy",
+        "status": "healthy" if model_loader.is_ready() else "not_ready",
+        "model_loaded": model_loader.model is not None,
     }
 
 
 @app.get("/metadata")
 def metadata():
-
     return {
-        "service": "Churn Prediction API",
+        "service": "Breast Cancer Diagnosis API",
         "version": "1.0.0",
         "model_name": model_loader.model_name,
+        "model_version": model_loader.model_version,
         "model_uri": model_loader.model_uri,
-        "model_loaded": model_loader.model is not None,
-        "preprocessor_loaded": model_loader.preprocessor is not None,
+        "model_loaded": model_loader.is_ready(),
+        "feature_count": len(model_loader.feature_names),
     }
 
-@app.post("/predict", response_model=PredictionResponse)
-def predict(data: CustomerInput):
-    request_id = uuid.uuid4().hex[:12]
-    start_time = time.perf_counter()
-    data_dict = data.model_dump()
 
+def predict_one(sample: BreastCancerInput) -> PredictionResponse:
     if not model_loader.is_ready():
-        latency_ms = round((time.perf_counter() - start_time) * 1000, 3)
-
-        log_inference(
-            input_data=data_dict,
-            latency_ms=latency_ms,
-            status="failure",
-            error="Model or preprocessor is not available",
-            model_name=model_loader.model_name,
-            model_version=model_loader.model_version,
-            run_id=model_loader.run_id,
-            request_id=request_id,
-        )
-
-        raise HTTPException(
-            status_code=503,
-            detail="Model or preprocessor is not available",
-        )
+        raise HTTPException(status_code=503, detail="Model is not available.")
 
     try:
-        # 1. Convert JSON data into a DataFrame
-        df = pd.DataFrame([data_dict])
-
-        # 2. Clean the raw input
-        df = clean_prediction_data(df)
-
-        # 3. Transform using the saved preprocessing pipeline
-        X = model_loader.preprocessor.transform(df)
-
-        # 4. Generate prediction
-        prediction = model_loader.model.predict(X)[0]
-
-        # 5. Generate churn probability
-        probability = model_loader.model.predict_proba(X)[0][1]
-
-        # 6. Calculate inference latency
-        latency_ms = round((time.perf_counter() - start_time) * 1000, 3)
-
-        # 7. Log inference event
-        log_inference(
-            input_data=data_dict,
-            prediction=int(prediction),
-            churn_probability=float(probability),
-            latency_ms=latency_ms,
-            status="success",
-            model_name=model_loader.model_name,
-            model_version=model_loader.model_version,
-            run_id=model_loader.run_id,
-            request_id=request_id,
+        features = clean_prediction_data(
+            sample.features, model_loader.feature_names
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-        # 8. Return the prediction
-        return {
-            "prediction": int(prediction),
-            "churn_probability": float(probability),
-        }
+    started_at = time.perf_counter()
+    prediction = int(model_loader.model.predict(features)[0])
+    malignant_probability = float(model_loader.model.predict_proba(features)[0][1])
+    latency_ms = round((time.perf_counter() - started_at) * 1000, 3)
+    log_inference(
+        input_data={"feature_count": len(sample.features)},
+        prediction=prediction,
+        malignant_probability=malignant_probability,
+        latency_ms=latency_ms,
+        model_name=model_loader.model_name,
+        model_version=model_loader.model_version,
+    )
+    return PredictionResponse(
+        prediction=prediction,
+        diagnosis="M" if prediction == 1 else "B",
+        malignant_probability=malignant_probability,
+    )
 
-    except Exception as e:
-        latency_ms = round((time.perf_counter() - start_time) * 1000, 3)
 
-        log_inference(
-            input_data=data_dict,
-            latency_ms=latency_ms,
-            status="failure",
-            error=str(e),
-            model_name=model_loader.model_name,
-            model_version=model_loader.model_version,
-            run_id=model_loader.run_id,
-            request_id=request_id,
-        )
+@app.post("/predict", response_model=PredictionResponse)
+def predict(sample: BreastCancerInput):
+    return predict_one(sample)
 
-        raise HTTPException(
-            status_code=500,
-            detail="An unexpected error occurred during prediction",
-        )
 
 @app.post("/predict/batch", response_model=BatchPredictionResponse)
-def predict_batch(data: BatchPredictionRequest):
-    batch_request_id = uuid.uuid4().hex[:12]
-    start_time = time.perf_counter()
-
-    data_dicts = [customer.model_dump() for customer in data.customers]
-
-    if not model_loader.is_ready():
-        latency_ms = round((time.perf_counter() - start_time) * 1000, 3)
-
-        for data_dict in data_dicts:
-            log_inference(
-                input_data=data_dict,
-                latency_ms=latency_ms,
-                status="failure",
-                error="Model or preprocessor is not available",
-                model_name=model_loader.model_name,
-                model_version=model_loader.model_version,
-                run_id=model_loader.run_id,
-                request_id=batch_request_id,
-            )
-
-        raise HTTPException(
-            status_code=503,
-            detail="Model or preprocessor is not available",
-        )
-
-    try:
-        df = pd.DataFrame(data_dicts)
-        df = clean_prediction_data(df)
-
-        X = model_loader.preprocessor.transform(df)
-
-        predictions = model_loader.model.predict(X)
-        probabilities = model_loader.model.predict_proba(X)[:, 1]
-
-        total_latency_ms = round(
-            (time.perf_counter() - start_time) * 1000,
-            3,
-        )
-
-        results = []
-
-        for data_dict, prediction, probability in zip(
-            data_dicts,
-            predictions,
-            probabilities,
-        ):
-            log_inference(
-                input_data=data_dict,
-                prediction=int(prediction),
-                churn_probability=float(probability),
-                latency_ms=total_latency_ms,
-                status="success",
-                model_name=model_loader.model_name,
-                model_version=model_loader.model_version,
-                run_id=model_loader.run_id,
-                request_id=uuid.uuid4().hex[:12],
-            )
-
-            results.append(
-                {
-                    "prediction": int(prediction),
-                    "churn_probability": float(probability),
-                }
-            )
-
-        return {
-            "count": len(results),
-            "predictions": results,
-        }
-
-    except Exception as e:
-        latency_ms = round(
-            (time.perf_counter() - start_time) * 1000,
-            3,
-        )
-
-        for data_dict in data_dicts:
-            log_inference(
-                input_data=data_dict,
-                latency_ms=latency_ms,
-                status="failure",
-                error=str(e),
-                model_name=model_loader.model_name,
-                model_version=model_loader.model_version,
-                run_id=model_loader.run_id,
-                request_id=uuid.uuid4().hex[:12],
-            )
-
-        raise HTTPException(
-            status_code=500,
-            detail="An unexpected error occurred during batch prediction",
-        )
+def predict_batch(request: BatchPredictionRequest):
+    predictions = [predict_one(sample) for sample in request.samples]
+    return BatchPredictionResponse(count=len(predictions), predictions=predictions)
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

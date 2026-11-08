@@ -23,7 +23,7 @@ def main():
         sys.exit(1)
 
     raw_df = pd.read_csv(data_path)
-    passed = validate_schema(raw_df, output_report_name="baseline_validation.csv")
+    passed = validate_schema(raw_df, output_report_name="baseline_validation.json")
     sys.exit(0 if passed else 1)
 
 

@@ -1,12 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: churn-api-service
+  name: breast-cancer-api
 spec:
   selector:
-    app: churn-api
-  type: NodePort
+    app: breast-cancer-api
+  type: ClusterIP
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 8000
-      targetPort: 8000
+      targetPort: http

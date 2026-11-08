@@ -1,26 +1,18 @@
 import pandas as pd
 
 
-def clean_prediction_data(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Clean raw customer data before prediction.
-    """
-
-    df = df.copy()
-
-    # Remove customer ID because it is not a model feature
-    if "customerID" in df.columns:
-        df = df.drop(columns=["customerID"])
-
-    # Convert TotalCharges to numeric
-    if "TotalCharges" in df.columns:
-        df["TotalCharges"] = pd.to_numeric(
-            df["TotalCharges"],
-            errors="coerce"
-        )
-
-    # Remove target column if someone accidentally sends it
-    if "Churn" in df.columns:
-        df = df.drop(columns=["Churn"])
-
-    return df
+def clean_prediction_data(
+    features: dict[str, float], feature_names: list[str]
+) -> pd.DataFrame:
+    missing = sorted(set(feature_names).difference(features))
+    unexpected = sorted(set(features).difference(feature_names))
+    if missing or unexpected:
+        details = []
+        if missing:
+            details.append(f"missing features: {missing}")
+        if unexpected:
+            details.append(f"unexpected features: {unexpected}")
+        raise ValueError("; ".join(details))
+    return pd.DataFrame(
+        [[features[name] for name in feature_names]], columns=feature_names
+    )

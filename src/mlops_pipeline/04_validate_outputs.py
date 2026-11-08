@@ -1,79 +1,45 @@
-import os
-import json
-import numpy as np
 import sys
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
 
-def validate_preprocessing_outputs():
-    print("[INFO] Validating Preprocessing Outputs...")
-    os.chdir(PROJECT_ROOT)
+def main():
+    required = (
+        PROCESSED_DIR / "X_train.csv",
+        PROCESSED_DIR / "X_test.csv",
+        PROCESSED_DIR / "y_train.npy",
+        PROCESSED_DIR / "y_test.npy",
+    )
+    missing = [str(path) for path in required if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(f"Processed outputs are missing: {missing}")
 
-    try:
-        X_train = np.load("data/processed/X_train_final.npy")
-        X_test = np.load("data/processed/X_test_final.npy")
-        y_train = np.load("data/processed/y_train.npy")
-        y_test = np.load("data/processed/y_test.npy")
-    except FileNotFoundError as exc:
-        print(f"[ERROR] Could not find processed data: {exc}")
-        return False
+    X_train = pd.read_csv(required[0])
+    X_test = pd.read_csv(required[1])
+    y_train = np.load(required[2])
+    y_test = np.load(required[3])
+    if list(X_train.columns) != list(X_test.columns):
+        raise ValueError("Training and test feature columns do not match.")
+    if len(X_train) != len(y_train) or len(X_test) != len(y_test):
+        raise ValueError("Feature and target row counts do not match.")
+    if not set(np.unique(np.concatenate((y_train, y_test)))).issubset({0, 1}):
+        raise ValueError("Targets must contain only 0 (benign) and 1 (malignant).")
 
-    errors = []
-
-    if np.isnan(X_train).sum() > 0:
-        errors.append("NaNs detected in X_train after preprocessing.")
-    if np.isnan(X_test).sum() > 0:
-        errors.append("NaNs detected in X_test after preprocessing.")
-    if X_train.shape[1] != X_test.shape[1]:
-        errors.append(
-            f"Feature mismatch: X_train has {X_train.shape[1]} cols, X_test has {X_test.shape[1]} cols."
-        )
-    if X_train.shape[0] != y_train.shape[0]:
-        errors.append("Row mismatch between X_train and y_train.")
-    if X_test.shape[0] != y_test.shape[0]:
-        errors.append("Row mismatch between X_test and y_test.")
-
-    for required_raw_split in [
-        "data/processed/X_train_raw.csv",
-        "data/processed/X_test_raw.csv",
-    ]:
-        if not os.path.exists(required_raw_split):
-            errors.append(f"Required raw split artifact missing: {required_raw_split}")
-
-    report = {
-        "validation_status": "PASSED" if not errors else "FAILED",
-        "matrix_dimensions": {
-            "X_train_shape": list(X_train.shape),
-            "X_test_shape": list(X_test.shape),
-            "y_train_shape": list(y_train.shape),
-            "y_test_shape": list(y_test.shape),
-        },
-        "data_quality": {
-            "missing_values_X_train": int(np.isnan(X_train).sum()),
-            "missing_values_X_test": int(np.isnan(X_test).sum()),
-        },
-        "errors": errors,
-    }
-
-    os.makedirs("artifacts", exist_ok=True)
-    report_path = "artifacts/preprocessing_summary_report.json"
-    with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=4)
-
-    if errors:
-        print("[ERROR] Output Validation FAILED!")
-        for error in errors:
-            print(f"  - {error}")
-        return False
-
-    print("[SUCCESS] Output Validation PASSED.")
-    print(f"[INFO] Summary report saved to {report_path}")
-    return True
+    print(
+        f"[SUCCESS] Processed outputs validated: "
+        f"{len(X_train)} train / {len(X_test)} test rows."
+    )
 
 
 if __name__ == "__main__":
-    passed = validate_preprocessing_outputs()
-    sys.exit(0 if passed else 1)
+    try:
+        main()
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"[ERROR] {exc}")
+        sys.exit(1)

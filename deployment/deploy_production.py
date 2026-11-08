@@ -12,7 +12,7 @@ METADATA_PATH = DEPLOYMENT_DIR / "model_metadata.json"
 K8S_DEPLOYMENT_PATH = PROJECT_ROOT / "k8s" / "deployment.yaml"
 REPORT_PATH = PROJECT_ROOT / "reports" / "deployment_automation_report.json"
 
-IMAGE_NAME = "churn-prediction-api"
+IMAGE_NAME = "breast-cancer-api"
 
 
 def run_command(command):
@@ -65,25 +65,18 @@ def deploy_production():
     model_name = metadata["model_name"]
     model_version = metadata["model_version"]
     model_stage = metadata["model_stage"]
-    run_id = metadata["run_id"]
-
     if model_stage != "Production":
         raise RuntimeError(f"Deployment blocked. Model stage is '{model_stage}', not 'Production'.")
 
     model_path = DEPLOYMENT_DIR / "model.pkl"
-    preprocessor_path = DEPLOYMENT_DIR / "preprocessor.pkl"
 
     if not model_path.exists():
         raise FileNotFoundError(f"Model artifact not found: {model_path}")
-
-    if not preprocessor_path.exists():
-        raise FileNotFoundError(f"Preprocessor artifact not found: {preprocessor_path}")
 
     image_tag = f"{IMAGE_NAME}:model-v{model_version}"
 
     print(f"[INFO] Model        : {model_name}")
     print(f"[INFO] Model version: {model_version}")
-    print(f"[INFO] Run ID       : {run_id}")
     print(f"[INFO] Docker image : {image_tag}")
     print(f"[INFO] Kubernetes   : {deployment_name}")
     print(f"[INFO] Container    : {container_name}")
@@ -96,6 +89,15 @@ def deploy_production():
     else:
         print("[INFO] Docker image not found. Building...")
         run_command(["docker", "build", "-t", image_tag, "."])
+
+    print("[INFO] Applying Kubernetes manifests...")
+    run_command(["kubectl", "apply", "-f", str(K8S_DEPLOYMENT_PATH)])
+    run_command([
+        "kubectl",
+        "apply",
+        "-f",
+        str(PROJECT_ROOT / "k8s" / "service.yaml"),
+    ])
 
     print("[INFO] Updating Kubernetes deployment...")
     run_command([
@@ -119,15 +121,17 @@ def deploy_production():
         "status": "success",
         "model_name": model_name,
         "model_version": str(model_version),
-        "run_id": run_id,
         "docker_image": image_tag,
-        "kubernetes_context": "docker-desktop",
+        "kubernetes_context": subprocess.check_output(
+            ["kubectl", "config", "current-context"],
+            cwd=PROJECT_ROOT,
+            text=True,
+        ).strip(),
         "kubernetes_deployment": deployment_name,
         "kubernetes_container": container_name,
         "app_label": app_label,
         "deployment_bundle": {
             "model": str(model_path.relative_to(PROJECT_ROOT)),
-            "preprocessor": str(preprocessor_path.relative_to(PROJECT_ROOT)),
             "metadata": str(METADATA_PATH.relative_to(PROJECT_ROOT))
         }
     }

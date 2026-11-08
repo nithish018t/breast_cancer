@@ -1,18 +1,52 @@
 # Labs 7-9: Simple end-to-end MLOps pipeline
 
 data:
-  raw_path: data/raw/churn.csv
+  raw_path: data/raw/data.csv
   processed_dir: data/processed
-  target_column: Churn
-  id_column: customerID
+  target_column: diagnosis
+  id_column: id
+  positive_label: M
+  drop_columns:
+    - Unnamed: 32
+  feature_columns:
+    - radius_mean
+    - texture_mean
+    - perimeter_mean
+    - area_mean
+    - smoothness_mean
+    - compactness_mean
+    - concavity_mean
+    - concave points_mean
+    - symmetry_mean
+    - fractal_dimension_mean
+    - radius_se
+    - texture_se
+    - perimeter_se
+    - area_se
+    - smoothness_se
+    - compactness_se
+    - concavity_se
+    - concave points_se
+    - symmetry_se
+    - fractal_dimension_se
+    - radius_worst
+    - texture_worst
+    - perimeter_worst
+    - area_worst
+    - smoothness_worst
+    - compactness_worst
+    - concavity_worst
+    - concave points_worst
+    - symmetry_worst
+    - fractal_dimension_worst
 
 split:
   test_size: 0.2
   random_state: 42
 
 model:
-  n_estimators: 150
-  max_depth: 12
+  n_estimators: 300
+  max_depth: null
   random_state: 42
   class_weight: balanced
 
@@ -20,25 +54,19 @@ mlflow:
   # Leave empty for local MLflow. For GitHub Actions, set the
   # MLFLOW_TRACKING_URI environment variable or put a server URI here.
   tracking_uri: ""
-  experiment_name: churn_prediction_model_training_lab7
+  experiment_name: breast_cancer_model_training
 
 registry:
-  model_name: Telco_Churn_Production_Model
-  decision_metric: recall
-
-
+  model_name: Breast_Cancer_Diagnosis_Model
+  decision_metric: roc_auc
 
 quality_gate:
-  metric: recall
-  minimum_value: 0.70
-
-lab9:
-  repetitions: 3
+  metric: roc_auc
+  minimum_value: 0.90
 
 paths:
-  preprocessor: models/preprocessor.pkl
-  model: models/churn_model.pkl
+  model: deployment/model.pkl
+  model_metadata: deployment/model_metadata.json
   evaluation_report: reports/evaluation_report.json
   quality_gate_report: reports/quality_gate_report.json
-  failure_report: reports/failure_report.json
   inference_output: outputs/inference_predictions.csv

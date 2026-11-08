@@ -1,22 +1,42 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: churn-api
+  name: breast-cancer-api
   labels:
-    app: churn-api
+    app: breast-cancer-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: churn-api
+      app: breast-cancer-api
   template:
     metadata:
       labels:
-        app: churn-api
+        app: breast-cancer-api
     spec:
       containers:
-        - name: churn-api
-          image: churn-prediction-api:1.0
+        - name: breast-cancer-api
+          image: breast-cancer-api:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8000
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi

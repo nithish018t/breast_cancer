@@ -1,91 +1,25 @@
-import os
-import json
-import joblib
-import pandas as pd
 import numpy as np
-from pathlib import Path
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.impute import KNNImputer
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+from breast_cancer_pipeline import PROJECT_ROOT, load_config, load_dataset, prepare_splits
 
 
 def run_preprocessing():
-    print("Starting Preprocessing Pipeline...")
-    os.chdir(PROJECT_ROOT)
-
-    # 1. Load the raw data
-    data_path = 'data/raw/churn.csv'
-    df = pd.read_csv(data_path)
-    
-    # 2. Data Cleaning
-    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce').fillna(0)
-
-    # 2. Data Cleaning (Experiment: Fill missing TotalCharges with KNN Imputer)
-    # First, force empty strings to NaN
-    # df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
-    
-    # # We use tenure and MonthlyCharges to help KNN find the most similar customers
-    # knn_cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
-    
-    # print("Applying KNN Imputation")
-    # imputer = KNNImputer(n_neighbors=5)
-    # df[knn_cols] = imputer.fit_transform(df[knn_cols])
-
-    if 'customerID' in df.columns:
-        df = df.drop('customerID', axis=1)
-        
-    # Unconditional string to binary integer conversion
-    df['Churn'] = df['Churn'].apply(lambda x: 1 if str(x).strip().lower() == 'yes' else 0).astype(int)
-        
-    X = df.drop('Churn', axis=1)
-    y = df['Churn']
-    
-    # 3. Train-Test Split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+    config = load_config()
+    frame, feature_columns = load_dataset(config)
+    X_train, X_test, y_train, y_test, _, _ = prepare_splits(
+        config, frame, feature_columns
     )
-    
-    # 4. Separate Column Types
-    cat_cols = X_train.select_dtypes(include=['object', 'category']).columns
-    num_cols = X_train.select_dtypes(include=['int64', 'float64']).columns
-    
-    # 5. Scale & Encode
-    scaler = StandardScaler()
-    x_train_scaled = scaler.fit_transform(X_train[num_cols])
-    x_test_scaled = scaler.transform(X_test[num_cols])
-    
-    ohe = OneHotEncoder(drop='first', sparse_output=False, handle_unknown='ignore')
-    x_train_encoded = ohe.fit_transform(X_train[cat_cols])
-    x_test_encoded = ohe.transform(X_test[cat_cols])
-    
-    # Combine Features
-    X_train_final = np.hstack((x_train_scaled, x_train_encoded))
-    X_test_final = np.hstack((x_test_scaled, x_test_encoded))
-    
-    # 6. Save Artifacts with explicit integer type casting
-    np.save('data/processed/X_train_final.npy', X_train_final)
-    np.save('data/processed/X_test_final.npy', X_test_final)
-    np.save('data/processed/y_train.npy', y_train.to_numpy(dtype=np.int64))
-    np.save('data/processed/y_test.npy', y_test.to_numpy(dtype=np.int64))
-    
-    joblib.dump(scaler, 'models/scaler.pkl')
-    joblib.dump(ohe, 'models/ohe.pkl')
-    
-    # Save Metadata
-    metadata = {
-        "dataset_name": "Telco Customer Churn",
-        "train_shape": list(X_train_final.shape),
-        "test_shape": list(X_test_final.shape),
-        "numerical_features": list(num_cols),
-        "categorical_features": list(cat_cols)
-    }
-    with open('data/processed/dataset_metadata.json', 'w') as f:
-        json.dump(metadata, f, indent=4)
-        
-    print("Preprocessing completed successfully!")
+    processed_dir = PROJECT_ROOT / config["data"]["processed_dir"]
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    X_train.to_csv(processed_dir / "X_train.csv", index=False)
+    X_test.to_csv(processed_dir / "X_test.csv", index=False)
+    np.save(processed_dir / "y_train.npy", y_train.to_numpy(dtype=np.int64))
+    np.save(processed_dir / "y_test.npy", y_test.to_numpy(dtype=np.int64))
+    print(
+        f"[SUCCESS] Prepared {len(X_train)} training and {len(X_test)} test rows "
+        f"with {len(feature_columns)} numeric features."
+    )
+
 
 if __name__ == "__main__":
     run_preprocessing()

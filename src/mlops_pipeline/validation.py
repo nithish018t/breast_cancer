@@ -1,58 +1,55 @@
-import os
+import json
+from pathlib import Path
+
 import pandas as pd
-import pandera.pandas as pa
-from pandera import Check, Column
-
-def validate_total_charges(series):
-    values = series.astype("string").str.strip()
-    return values.isna() | values.eq("") | pd.to_numeric(values, errors="coerce").notna()
-
-def get_telco_schema():
-    return pa.DataFrameSchema(
-        {
-            "customerID": Column(pa.String),
-            "gender": Column(pa.String, Check.isin(["Male", "Female"])),
-            "SeniorCitizen": Column(pa.Int, Check.isin([0, 1])),
-            "Partner": Column(pa.String, Check.isin(["Yes", "No"])),
-            "Dependents": Column(pa.String, Check.isin(["Yes", "No"])),
-            "tenure": Column(pa.Int, Check.ge(0)),
-            "PhoneService": Column(pa.String, Check.isin(["Yes", "No"])),
-            "MultipleLines": Column(pa.String, Check.isin(["Yes", "No", "No phone service"])),
-            "InternetService": Column(pa.String, Check.isin(["DSL", "Fiber optic", "No"])),
-            "OnlineSecurity": Column(pa.String, Check.isin(["Yes", "No", "No internet service"])),
-            "OnlineBackup": Column(pa.String, Check.isin(["Yes", "No", "No internet service"])),
-            "DeviceProtection": Column(pa.String, Check.isin(["Yes", "No", "No internet service"])),
-            "TechSupport": Column(pa.String, Check.isin(["Yes", "No", "No internet service"])),
-            "StreamingTV": Column(pa.String, Check.isin(["Yes", "No", "No internet service"])),
-            "StreamingMovies": Column(pa.String, Check.isin(["Yes", "No", "No internet service"])),
-            "Contract": Column(pa.String, Check.isin(["Month-to-month", "One year", "Two year"])),
-            "PaperlessBilling": Column(pa.String, Check.isin(["Yes", "No"])),
-            "PaymentMethod": Column(pa.String, Check.isin(["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])),
-            "MonthlyCharges": Column(pa.Float, Check.ge(0.0)),
-            # "TotalCharges": Column(pa.String, nullable=True),
-            # "TotalCharges": Column(None, Check(lambda s: pd.to_numeric(s, errors="coerce").notna() | s.isna()), nullable=True),
-            "TotalCharges": Column(None, Check(validate_total_charges), nullable=True),
-            "Churn": Column(pa.String, Check.isin(["Yes", "No"])),
-        },
-        strict=True,
-    )
+import yaml
 
 
-def validate_schema(df, output_report_name="schema_validation_errors.csv"):
-    print(f"[INFO] Validating schema (Records: {len(df)})...")
-    schema = get_telco_schema()
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-    try:
-        schema.validate(df, lazy=True)
-        print("[SUCCESS] Schema Validation PASSED. Dataset is clean.")
-        return True
-    except pa.errors.SchemaErrors as err:
-        print("[ERROR] Schema Validation FAILED. Corruptions detected.")
-        failures = err.failure_cases[["schema_context", "column", "check", "failure_case", "index"]]
-        print(failures.to_string())
 
-        os.makedirs("artifacts", exist_ok=True)
-        report_path = os.path.join("artifacts", output_report_name)
-        failures.to_csv(report_path, index=False)
-        print(f"[INFO] Detailed failure report saved to '{report_path}'.")
+def validate_schema(df, output_report_name="schema_validation_errors.json"):
+    with (PROJECT_ROOT / "config.yaml").open("r", encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+    data_config = config["data"]
+    required = [
+        data_config["id_column"],
+        data_config["target_column"],
+        *data_config["feature_columns"],
+    ]
+    errors = []
+    missing_columns = sorted(set(required).difference(df.columns))
+    if missing_columns:
+        errors.append(f"Missing columns: {missing_columns}")
+
+    if not missing_columns:
+        target = data_config["target_column"]
+        invalid_labels = sorted(set(df[target].dropna().astype(str)) - {"B", "M"})
+        if invalid_labels:
+            errors.append(f"Invalid diagnosis labels: {invalid_labels}")
+        features = data_config["feature_columns"]
+        original_features = df[features]
+        numeric = original_features.apply(pd.to_numeric, errors="coerce")
+        invalid_values = original_features.notna() & numeric.isna()
+        if invalid_values.any().any():
+            invalid_columns = invalid_values.columns[
+                invalid_values.any()
+            ].tolist()
+            errors.append(f"Non-numeric feature values: {invalid_columns}")
+        if numeric.isna().all(axis=1).any():
+            errors.append("At least one record has no usable numeric features.")
+        if df[data_config["id_column"]].isna().any():
+            errors.append("Record identifiers must not be missing.")
+
+    if errors:
+        report_path = PROJECT_ROOT / "artifacts" / output_report_name
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        with report_path.open("w", encoding="utf-8") as file:
+            json.dump({"status": "FAILED", "errors": errors}, file, indent=2)
+        print("[ERROR] Breast-cancer dataset validation failed.")
+        for error in errors:
+            print(f"  - {error}")
         return False
+
+    print(f"[SUCCESS] Validated {len(df)} breast-cancer records.")
+    return True

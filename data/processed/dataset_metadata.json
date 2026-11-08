@@ -1,34 +1,40 @@
 {
-    "dataset_name": "Telco Customer Churn",
-    "train_shape": [
-        5875,
-        30
-    ],
-    "test_shape": [
-        1469,
-        30
-    ],
-    "numerical_features": [
-        "SeniorCitizen",
-        "tenure",
-        "MonthlyCharges",
-        "TotalCharges"
-    ],
-    "categorical_features": [
-        "gender",
-        "Partner",
-        "Dependents",
-        "PhoneService",
-        "MultipleLines",
-        "InternetService",
-        "OnlineSecurity",
-        "OnlineBackup",
-        "DeviceProtection",
-        "TechSupport",
-        "StreamingTV",
-        "StreamingMovies",
-        "Contract",
-        "PaperlessBilling",
-        "PaymentMethod"
-    ]
+  "dataset_name": "Wisconsin Diagnostic Breast Cancer",
+  "source_path": "data/raw/data.csv",
+  "target_column": "diagnosis",
+  "feature_columns": [
+    "radius_mean",
+    "texture_mean",
+    "perimeter_mean",
+    "area_mean",
+    "smoothness_mean",
+    "compactness_mean",
+    "concavity_mean",
+    "concave points_mean",
+    "symmetry_mean",
+    "fractal_dimension_mean",
+    "radius_se",
+    "texture_se",
+    "perimeter_se",
+    "area_se",
+    "smoothness_se",
+    "compactness_se",
+    "concavity_se",
+    "concave points_se",
+    "symmetry_se",
+    "fractal_dimension_se",
+    "radius_worst",
+    "texture_worst",
+    "perimeter_worst",
+    "area_worst",
+    "smoothness_worst",
+    "compactness_worst",
+    "concavity_worst",
+    "concave points_worst",
+    "symmetry_worst",
+    "fractal_dimension_worst"
+  ],
+  "train_rows": 455,
+  "test_rows": 114,
+  "random_state": 42
 }

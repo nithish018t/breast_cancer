@@ -7,29 +7,22 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def execute_pipeline():
-    print("[INFO] =========================================")
-    print("[INFO] Starting Lab 6: Model Registry & Lifecycle")
-    print("[INFO] =========================================")
-    
-    scripts = [
-        "src/train_registry.py",          # Trains and registers a new model version
-        "src/automate_lifecycle.py",      # Compares versions and promotes the Champion
-        "src/generate_registry_report.py" # Generates the JSON deployment artifact
-    ]
-    
+    scripts = (
+        "src/train_registry.py",
+        "src/mlops_pipeline/07_quality_gate.py",
+        "src/automate_lifecycle.py",
+        "src/generate_registry_report.py",
+    )
     for script in scripts:
-        print(f"\n[INFO] ---> Executing {script}...")
-        script_path = PROJECT_ROOT / script
         result = subprocess.run(
-            [sys.executable, str(script_path)],
+            [sys.executable, str(PROJECT_ROOT / script)],
             cwd=PROJECT_ROOT,
+            check=False,
         )
-        
-        if result.returncode != 0:
-            print(f"[ERROR] Pipeline halted. {script} caught an error.")
-            sys.exit(1)
-            
-    print("\n[SUCCESS] Lab 6 Model Registry Pipeline fully executed!")
+        if result.returncode:
+            raise SystemExit(f"Pipeline stage failed: {script}")
+    print("[SUCCESS] Breast-cancer training and lifecycle pipeline completed.")
+
 
 if __name__ == "__main__":
     execute_pipeline()
