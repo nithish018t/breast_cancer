@@ -1,0 +1,46 @@
+name: Lab 13 - Self-Hosted Runner Prerequisites
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/lab13_runner_test.yml"
+      - "GIT_WORKFLOW.md"
+
+jobs:
+  test-runner:
+    runs-on: [self-hosted, Windows, X64]
+    steps:
+      - name: Check Python
+        shell: powershell
+        run: |
+          python --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check Git
+        shell: powershell
+        run: |
+          git --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check Docker
+        shell: powershell
+        run: |
+          docker info
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check Kubernetes
+        shell: powershell
+        run: |
+          kubectl get nodes
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check checked-out project
+        shell: powershell
+        run: |
+          if (-not (Test-Path (Join-Path $env:GITHUB_WORKSPACE "src\breast_cancer_pipeline.py"))) {
+              throw "Breast cancer pipeline is missing from the checked-out workspace."
+          }
+          Write-Host "Runner: $env:RUNNER_NAME"
+          Write-Host "Workspace: $env:GITHUB_WORKSPACE"

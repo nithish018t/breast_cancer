@@ -1,0 +1,144 @@
+name: Lab 13 - Self-Hosted End-to-End Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: lab13-end-to-end
+  cancel-in-progress: false
+
+jobs:
+  end-to-end:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: powershell
+        run: |
+          python -m pip install -r requirements-api.txt
+          python -m pip install pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Train, evaluate, and run the complete pipeline
+        shell: powershell
+        run: |
+          python src\breast_cancer_pipeline.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python src\mlops_pipeline\breast_cancer_prediction_pipeline.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run tests and failure-injection checks
+        shell: powershell
+        run: |
+          python -m pytest -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python src\mlops_pipeline\10_failure_injection.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build Docker image
+        shell: powershell
+        run: |
+          docker build -t breast-cancer-api:latest .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test Docker health and prediction endpoints
+        shell: powershell
+        run: |
+          $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+          $listener.Start()
+          $port = $listener.LocalEndpoint.Port
+          $listener.Stop()
+          $containerName = "breast-cancer-lab13-$env:GITHUB_RUN_ID"
+          docker run --detach --name $containerName --publish "127.0.0.1:$($port):8000" breast-cancer-api:latest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          try {
+              $baseUrl = "http://127.0.0.1:$port"
+              $healthy = $false
+              for ($attempt = 0; $attempt -lt 30; $attempt++) {
+                  try {
+                      $health = Invoke-RestMethod "$baseUrl/health" -TimeoutSec 3
+                      if ($health.status -eq "healthy") { $healthy = $true; break }
+                  } catch {
+                      Start-Sleep -Seconds 2
+                  }
+              }
+              if (-not $healthy) { throw "Docker API did not become healthy." }
+
+              $row = Import-Csv "data\raw\data.csv" | Select-Object -First 1
+              $features = [ordered]@{}
+              foreach ($property in $row.PSObject.Properties) {
+                  if ($property.Name -notin @("id", "diagnosis", "Unnamed: 32")) {
+                      $features[$property.Name] = [double]$property.Value
+                  }
+              }
+              $body = ConvertTo-Json -InputObject @{ features = $features } -Depth 5
+              $prediction = Invoke-RestMethod "$baseUrl/predict" -Method Post -ContentType "application/json" -Body $body
+              if ($prediction.diagnosis -notin @("B", "M")) { throw "Docker prediction returned an invalid diagnosis." }
+              Write-Host "Docker prediction passed: $($prediction.diagnosis)"
+          } finally {
+              docker rm --force $containerName | Out-Null
+          }
+
+      - name: Deploy and verify Kubernetes service
+        shell: powershell
+        run: |
+          kubectl apply -f k8s\deployment.yaml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          kubectl apply -f k8s\service.yaml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          kubectl rollout status deployment/breast-cancer-api --timeout=180s
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+          $listener.Start()
+          $port = $listener.LocalEndpoint.Port
+          $listener.Stop()
+          $forward = Start-Process -FilePath "kubectl" -ArgumentList @("port-forward", "service/breast-cancer-api", "$port`:8000") -PassThru -NoNewWindow
+          try {
+              $baseUrl = "http://127.0.0.1:$port"
+              $healthy = $false
+              for ($attempt = 0; $attempt -lt 30; $attempt++) {
+                  if ($forward.HasExited) { throw "kubectl port-forward exited unexpectedly." }
+                  try {
+                      $health = Invoke-RestMethod "$baseUrl/health" -TimeoutSec 3
+                      if ($health.status -eq "healthy") { $healthy = $true; break }
+                  } catch {
+                      Start-Sleep -Seconds 2
+                  }
+              }
+              if (-not $healthy) { throw "Kubernetes API did not become healthy." }
+              $row = Import-Csv "data\raw\data.csv" | Select-Object -First 1
+              $features = [ordered]@{}
+              foreach ($property in $row.PSObject.Properties) {
+                  if ($property.Name -notin @("id", "diagnosis", "Unnamed: 32")) {
+                      $features[$property.Name] = [double]$property.Value
+                  }
+              }
+              $body = ConvertTo-Json -InputObject @{ features = $features } -Depth 5
+              $prediction = Invoke-RestMethod "$baseUrl/predict" -Method Post -ContentType "application/json" -Body $body
+              if ($prediction.diagnosis -notin @("B", "M")) { throw "Kubernetes prediction returned an invalid diagnosis." }
+              Write-Host "Kubernetes prediction passed: $($prediction.diagnosis)"
+          } finally {
+              if (-not $forward.HasExited) { Stop-Process -Id $forward.Id }
+          }
+
+      - name: Upload Lab 13 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab13-end-to-end-${{ github.run_number }}
+          path: |
+            reports/**
+            logs/**
+            outputs/**
+          if-no-files-found: ignore

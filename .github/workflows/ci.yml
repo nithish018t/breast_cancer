@@ -25,7 +25,6 @@ on:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
-    env:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

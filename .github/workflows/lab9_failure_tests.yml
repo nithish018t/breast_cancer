@@ -1,0 +1,45 @@
+name: Lab 9 - Failure and Recovery Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "src/mlops_pipeline/10_failure_injection.py"
+      - "src/mlops_pipeline/validation.py"
+      - "src/mlops_pipeline/breast_cancer_prediction_pipeline.py"
+      - "data/raw/data.csv"
+      - "requirements-api.txt"
+      - ".github/workflows/lab9_failure_tests.yml"
+
+jobs:
+  failure-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-api.txt
+
+      - name: Build the normal breast-cancer pipeline outputs
+        run: python src/mlops_pipeline/breast_cancer_prediction_pipeline.py
+
+      - name: Run Lab 9 invalid-data failure checks
+        run: python src/mlops_pipeline/10_failure_injection.py
+
+      - name: Upload Lab 9 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab9-failure-tests-${{ github.run_number }}
+          path: |
+            reports/**
+            logs/**
+            artifacts/**
+          if-no-files-found: ignore
