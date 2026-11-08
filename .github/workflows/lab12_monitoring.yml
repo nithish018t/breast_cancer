@@ -9,6 +9,7 @@ on:
       - "src/mlops_pipeline/12_*.py"
       - "src/mlops_pipeline/lab12_monitoring.py"
       - "api/monitoring_logger.py"
+      - "requirements-api.txt"
       - "data/raw/data.csv"
       - ".github/workflows/lab12_monitoring.yml"
 
